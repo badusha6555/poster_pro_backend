@@ -1,9 +1,21 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5433/posterpro
-    username: posterpro
-    password: posterpro_dev
-    driver-class-name: org.postgresql.Driver
+  application:
+    name: poster-pro-backend
+
+  # No profile is "correct" to silently default to in production, so there is
+  # no ${...:dev} fallback here — omit SPRING_PROFILES_ACTIVE and the app runs
+  # with NONE of application-dev.yml/application-prod.yml's values, which will
+  # fail fast (e.g. no datasource URL) rather than accidentally behaving like
+  # dev. Local runs should pass -Dspring.profiles.active=dev (or `dev,local`)
+  # explicitly — see README/run configuration.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+    group:
+      # PosterProApplicationTests runs with @ActiveProfiles("test") — pull in
+      # dev's datasource/jwt/storage/payment values (same local Postgres/MinIO)
+      # rather than duplicating them in a third profile file.
+      test: dev
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -11,25 +23,41 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
-    show-sql: false
+        jdbc:
+          time_zone: UTC
+    show-sql: ${LOG_SQL:false}
+    open-in-view: false
+
   flyway:
     enabled: true
     locations: classpath:db/migration
+    validate-on-migrate: true
 
-jwt:
-  secret: cG9zdGVycHJvLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLXBvc3RlcnBybw==
-  expiration: 86400000
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
 
-storage:
-  s3:
-    endpoint: http://localhost:9000
-    access-key: minioadmin
-    secret-key: minioadmin
-    bucket: posterpro
-    region: us-east-1
+server:
+  port: ${PORT:8080}
 
-payment:
-  active-provider: razorpay
-  razorpay:
-    key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder}
-    key-secret: ${RAZORPAY_KEY_SECRET:placeholder_secret_32chars_min}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# jwt.*, storage.*, payment.* have no values here — each is entirely
+# environment-specific and lives in application-{dev,prod}.yml. Nothing in
+# this file should ever need to differ between a developer's laptop and
+# production; if it does, it belongs in a profile file instead.
+
+# Root level is controlled by logback-spring.xml (DEBUG outside prod, INFO in prod)
+# via springProfile, so it is intentionally not set here.
+logging:
+  level:
+    com.posterpro: INFO
+    org.springframework.web: INFO
+    # Bump to DEBUG (e.g. LOG_SECURITY_LEVEL=DEBUG) when debugging authentication/authorization.
+    org.springframework.security: ${LOG_SECURITY_LEVEL:INFO}
+    org.flywaydb: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN

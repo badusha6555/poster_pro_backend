@@ -1,6 +1,7 @@
 package com.posterpro.api.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +31,19 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
+    /**
+     * Comma-separated origin patterns. The mobile app itself (Dio/http on
+     * Android/iOS) doesn't send an Origin header and isn't subject to CORS at
+     * all — this only matters for a browser-based client (Flutter web build,
+     * an admin dashboard, etc). Auth here is a Bearer JWT the client attaches
+     * itself (not a cookie), so a wildcard origin isn't the classic
+     * CORS+cookie CSRF hole, but it still lets any webpage read authenticated
+     * API responses in-browser once a token is in hand — set explicit
+     * origins via CORS_ALLOWED_ORIGINS before shipping a web client.
+     */
+    @Value("${app.cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -37,6 +51,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Razorpay calls this server-to-server with no JWT; authenticity is
+                        // instead verified from the raw body + X-Razorpay-Signature header
+                        // (see PaymentService#handleWebhook) — never trust this path on
+                        // reachability alone.
+                        .requestMatchers("/api/payments/webhook/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -50,8 +69,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*")); // tighten for prod later
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOriginPatterns(
+                java.util.Arrays.stream(allowedOrigins.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList()
+        );
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

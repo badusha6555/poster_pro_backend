@@ -1,0 +1,75 @@
+# Production. Every value below is read ONLY from an environment variable with
+# NO fallback default — if one is missing, Spring Boot fails to start with a
+# clear "could not resolve placeholder" error instead of silently running with
+# a dev credential or an unreachable dev host. Set these on whatever platform
+# hosts the backend (Railway/Render "Variables" tab, docker-compose env_file,
+# systemd EnvironmentFile, etc.) — see the deployment README for the full list.
+spring:
+  datasource:
+    # Most managed Postgres hosts (Railway, Render, Supabase) hand you a single
+    # connection string like postgres://user:pass@host:5432/db — that is NOT
+    # the JDBC form Spring needs. Convert it to:
+    #   DB_URL=jdbc:postgresql://<host>:<port>/<db>?sslmode=require
+    # and set DB_USERNAME/DB_PASSWORD separately from the same credentials.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      pool-name: PosterProHikariPool
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+jwt:
+  # Generate with e.g. `openssl rand -base64 64`. Must differ from the dev
+  # secret in application-dev.yml and never be committed.
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+storage:
+  s3:
+    # Self-hosted MinIO: http://<internal-host>:9000. Managed S3-compatible
+    # storage: that provider's endpoint (e.g. https://<account>.r2.cloudflarestorage.com).
+    endpoint: ${STORAGE_S3_ENDPOINT}
+    # Host the mobile/web client can actually reach — your public domain for
+    # storage (e.g. https://storage.posterpro.app or the S3/R2 public endpoint),
+    # NOT the internal Docker/VPC hostname used by `endpoint` above.
+    public-base-url: ${STORAGE_S3_PUBLIC_BASE_URL}
+    access-key: ${STORAGE_S3_ACCESS_KEY}
+    secret-key: ${STORAGE_S3_SECRET_KEY}
+    bucket: ${STORAGE_S3_BUCKET}
+    region: ${STORAGE_S3_REGION:us-east-1}
+
+payment:
+  active-provider: razorpay
+  currency: ${PAYMENT_CURRENCY:INR}
+  razorpay:
+    # LIVE keys from the Razorpay dashboard (Settings > API Keys) — rzp_live_...
+    key-id: ${RAZORPAY_KEY_ID}
+    key-secret: ${RAZORPAY_KEY_SECRET}
+    # From Settings > Webhooks when you register the webhook URL below.
+    # RazorpayProvider#verifyWebhookSignature fails closed (rejects every call)
+    # if this is unset, so the webhook is a no-op until it's configured.
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+  plans:
+    # Real monthly prices (INR) — the placeholder values in application-dev.yml
+    # must NOT reach production. Confirm these before the first live charge.
+    basic: ${PLAN_PRICE_BASIC}
+    premium: ${PLAN_PRICE_PREMIUM}
+    enterprise: ${PLAN_PRICE_ENTERPRISE}
+
+logging:
+  level:
+    com.posterpro: INFO
+
+app:
+  cors:
+    # Comma-separated. Only matters for a browser-based client (Flutter web
+    # build, admin dashboard) — mobile app traffic isn't subject to CORS.
+    # Falls back to "*" (SecurityConfig's default) if left unset, so set this
+    # explicitly once any web client exists.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}

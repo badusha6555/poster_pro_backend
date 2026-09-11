@@ -1,0 +1,63 @@
+# Local development / local-network device testing. Never used in production —
+# see application-prod.yml for that. Everything here is safe to commit: dev-only
+# credentials pointing at services that only exist on a developer's own machine.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/posterpro
+    username: posterpro
+    password: posterpro_dev
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      pool-name: PosterProHikariPool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+jwt:
+  # Dev-only signing key — never reused in prod (see application-prod.yml, which
+  # requires JWT_SECRET with no fallback). Fine to commit: it only ever signs
+  # tokens for a database that lives on a developer's own machine.
+  secret: cG9zdGVycHJvLXNlY3JldC1rZXktZm9yLWp3dC1zaWduaW5nLXBvc3RlcnBybw==
+  expiration: 86400000
+
+storage:
+  s3:
+    endpoint: http://localhost:9000
+    # Host used for anything MinIO-related handed to API clients: thumbnail
+    # URLs (TemplateService) and the host presigned poster URLs are SIGNED
+    # against (S3Config's S3Presigner) — separate from `endpoint` (which the
+    # backend itself uses to reach MinIO) because the client (Android
+    # emulator, iOS sim, physical device, browser) may not reach MinIO the
+    # same way the backend process does. Default below targets this
+    # machine's LAN IP for physical-device testing, matching the frontend's
+    # default ApiConfig.baseUrl (192.168.8.141:8080). Override without
+    # editing this file via env var:
+    #   STORAGE_S3_PUBLIC_BASE_URL=http://10.0.2.2:9000        (Android emulator)
+    #   STORAGE_S3_PUBLIC_BASE_URL=http://localhost:9000        (iOS sim / desktop)
+    #   STORAGE_S3_PUBLIC_BASE_URL=http://<your-LAN-IP>:9000    (LAN changed)
+    public-base-url: ${STORAGE_S3_PUBLIC_BASE_URL:http://192.168.8.141:9000}
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: posterpro
+    region: us-east-1
+
+payment:
+  active-provider: razorpay
+  currency: INR
+  razorpay:
+    # Razorpay TEST mode keys (rzp_test_...) — safe to use here even if real,
+    # since test mode never moves money. Still overridable via env var.
+    key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder}
+    key-secret: ${RAZORPAY_KEY_SECRET:placeholder_secret_32chars_min}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+  plans:
+    basic: ${PLAN_PRICE_BASIC:299}
+    premium: ${PLAN_PRICE_PREMIUM:599}
+    enterprise: ${PLAN_PRICE_ENTERPRISE:1499}
+
+logging:
+  level:
+    com.posterpro: DEBUG

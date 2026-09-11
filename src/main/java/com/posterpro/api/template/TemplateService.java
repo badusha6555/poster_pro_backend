@@ -8,6 +8,7 @@ import com.posterpro.api.user.User;
 import com.posterpro.api.user.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -24,6 +25,12 @@ public class TemplateService {
     private final TemplateRepository templateRepository;
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
+
+    @Value("${storage.s3.public-base-url}")
+    private String publicBaseUrl;
+
+    @Value("${storage.s3.bucket}")
+    private String bucket;
 
     @Transactional(readOnly = true)
     public PageResponse<TemplateSummaryDto> list(Long categoryId, String search, int page, int size, String email) {
@@ -56,7 +63,7 @@ public class TemplateService {
         return new TemplateSummaryDto(
                 t.getId(),
                 t.getTitle(),
-                t.getThumbnailUrl(),
+                resolveThumbnailUrl(t.getThumbnailUrl()),
                 t.getPrice(),
                 category != null ? category.getId() : null,
                 category != null ? category.getName() : null,
@@ -72,7 +79,7 @@ public class TemplateService {
         return new TemplateDetailDto(
                 t.getId(),
                 t.getTitle(),
-                t.getThumbnailUrl(),
+                resolveThumbnailUrl(t.getThumbnailUrl()),
                 t.getPrice(),
                 category != null ? category.getId() : null,
                 category != null ? category.getName() : null,
@@ -84,6 +91,24 @@ public class TemplateService {
                 t.getCreatedAt(),
                 t.getUpdatedAt()
         );
+    }
+
+    /**
+     * `templates.thumbnail_url` stores either a bucket-relative MinIO object
+     * key (e.g. "templates/thumbnails/x.jpg") or, for legacy placeholder rows,
+     * an already-absolute external URL. Keys are resolved against
+     * storage.s3.public-base-url per environment so the same DB row works
+     * whether the client is an Android emulator, iOS simulator, or physical
+     * device, instead of baking one host into the database.
+     */
+    private String resolveThumbnailUrl(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            return raw;
+        }
+        return publicBaseUrl + "/" + bucket + "/" + raw;
     }
 
     private User findUser(String email) {

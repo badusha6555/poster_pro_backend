@@ -2,3 +2,9 @@
 .idea/
 *.class
 *.log
+logs/
+
+# Real secrets — only the .env.*.example templates are meant to be committed.
+.env
+.env.*
+!.env.*.example

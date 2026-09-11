@@ -7,6 +7,12 @@ import java.util.List;
  */
 public record TemplateSchema(int canvasWidth, int canvasHeight, List<Placeholder> placeholders) {
 
+    /**
+     * showCurrencySymbol defaults to true (draw "₹1,234") when null/absent.
+     * Set false on templates whose background image already has its own ₹
+     * glyph baked in next to the placeholder position, so the app only
+     * draws the number.
+     */
     public record Placeholder(
             String type,
             String field,
@@ -17,6 +23,7 @@ public record TemplateSchema(int canvasWidth, int canvasHeight, List<Placeholder
             String color,
             String align,
             Integer width,
-            Integer height
+            Integer height,
+            Boolean showCurrencySymbol
     ) {}
 }

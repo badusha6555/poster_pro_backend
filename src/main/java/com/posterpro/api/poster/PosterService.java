@@ -142,7 +142,8 @@ public class PosterService {
 
     private void drawText(Graphics2D g, TemplateSchema.Placeholder p, User user,
                            GoldRateProfile profile, PosterGenerateRequest request) {
-        String value = resolveTextValue(p.field(), user, profile, request);
+        boolean showCurrencySymbol = p.showCurrencySymbol() == null || p.showCurrencySymbol();
+        String value = resolveTextValue(p.field(), user, profile, request, showCurrencySymbol);
         if (!StringUtils.hasText(value)) {
             return;
         }
@@ -162,13 +163,17 @@ public class PosterService {
         g.drawString(value, x, p.y());
     }
 
-    private String resolveTextValue(String field, User user, GoldRateProfile profile, PosterGenerateRequest request) {
+    private String resolveTextValue(String field, User user, GoldRateProfile profile,
+                                     PosterGenerateRequest request, boolean showCurrencySymbol) {
         return switch (field) {
             case "shopName" -> user.getShopName();
-            case "rate22k916" -> formatRate(pickRate(request.getRate22k916(), profile != null ? profile.getRate22k916() : null));
-            case "rate18k" -> formatRate(pickRate(request.getRate18k(), profile != null ? profile.getRate18k() : null));
-            case "rate14k" -> formatRate(pickRate(request.getRate14k(), profile != null ? profile.getRate14k() : null));
-            case "rate9k" -> formatRate(pickRate(request.getRate9k(), profile != null ? profile.getRate9k() : null));
+            case "rate22k916" -> formatRate(pickRate(request.getRate22k916(), profile != null ? profile.getRate22k916() : null), showCurrencySymbol);
+            case "rate18k" -> formatRate(pickRate(request.getRate18k(), profile != null ? profile.getRate18k() : null), showCurrencySymbol);
+            case "rate14k" -> formatRate(pickRate(request.getRate14k(), profile != null ? profile.getRate14k() : null), showCurrencySymbol);
+            case "rate9k" -> formatRate(pickRate(request.getRate9k(), profile != null ? profile.getRate9k() : null), showCurrencySymbol);
+            // No GoldRateProfile column for these yet — request override only.
+            case "rate22k8g" -> formatRate(request.getRate22k8g(), showCurrencySymbol);
+            case "rate18k8g" -> formatRate(request.getRate18k8g(), showCurrencySymbol);
             default -> {
                 log.warn("Unknown text placeholder field '{}'", field);
                 yield null;
@@ -182,8 +187,11 @@ public class PosterService {
 
     private static final DecimalFormat RATE_FORMAT = new DecimalFormat("#,##0.##");
 
-    private String formatRate(BigDecimal rate) {
-        return rate != null ? "₹" + RATE_FORMAT.format(rate) : null;
+    private String formatRate(BigDecimal rate, boolean showCurrencySymbol) {
+        if (rate == null) {
+            return null;
+        }
+        return (showCurrencySymbol ? "₹" : "") + RATE_FORMAT.format(rate);
     }
 
     private void drawImage(Graphics2D g, TemplateSchema.Placeholder p, User user) throws IOException {

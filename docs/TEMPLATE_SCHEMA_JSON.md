@@ -30,6 +30,7 @@ Defines where each dynamic field is drawn on top of a template's
 | `color` | string (`#RRGGBB`) | text | Text fill color. |
 | `align` | `"left"` \| `"center"` \| `"right"` | text | Horizontal alignment relative to `x`. |
 | `width` / `height` | int | image | Box the image (currently only the shop logo) is scaled into. |
+| `showCurrencySymbol` | bool | text (rate fields) | Defaults to `true` ("₹1,234"). Set `false` when the background image already has its own ₹ glyph baked in next to this position, so only the number is drawn. |
 
 ## Field → data source mapping
 
@@ -44,6 +45,8 @@ Defines where each dynamic field is drawn on top of a template's
 | `rate18k` | Request override, falling back to `GoldRateProfile.rate18k` | |
 | `rate14k` | Request override, falling back to `GoldRateProfile.rate14k` | |
 | `rate9k` | Request override, falling back to `GoldRateProfile.rate9k` | |
+| `rate22k8g` | Request override only | No `GoldRateProfile` column yet — skipped if not sent in the generate request. |
+| `rate18k8g` | Request override only | Same as above. |
 
 Rate placeholders render as `₹<value>` with thousands separators (e.g. `₹6,850`).
 If neither a request override nor a saved profile value exists for a given

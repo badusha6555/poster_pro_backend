@@ -1,5 +1,6 @@
 package com.posterpro.api.payment;
 
+import com.posterpro.api.common.PlanTier;
 import com.posterpro.api.subscription.Subscription;
 import com.posterpro.api.user.User;
 import jakarta.persistence.*;
@@ -36,6 +37,10 @@ public class Payment {
 
     @Column(name = "provider_session_id")
     private String providerSessionId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plan_tier", nullable = false)
+    private PlanTier planTier;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;

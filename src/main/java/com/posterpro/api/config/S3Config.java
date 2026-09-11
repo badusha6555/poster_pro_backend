@@ -18,6 +18,18 @@ public class S3Config {
     @Value("${storage.s3.endpoint}")
     private String endpoint;
 
+    /**
+     * Host the presigner signs URLs against. Presigned URLs are SigV4-signed
+     * over the Host header (X-Amz-SignedHeaders=host), so swapping the host
+     * after signing invalidates the signature — unlike thumbnail_url
+     * resolution (TemplateService), this can't be fixed by rewriting the URL
+     * post-hoc. Must be whatever host the API *client* can reach (Android
+     * emulator's 10.0.2.2 alias, a LAN IP, etc.), which may differ from
+     * `endpoint` (what this backend process itself uses to reach MinIO).
+     */
+    @Value("${storage.s3.public-base-url}")
+    private String publicBaseUrl;
+
     @Value("${storage.s3.access-key}")
     private String accessKey;
 
@@ -44,7 +56,7 @@ public class S3Config {
     @Bean
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
-                .endpointOverride(URI.create(endpoint))
+                .endpointOverride(URI.create(publicBaseUrl))
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(accessKey, secretKey)
                 ))
