@@ -18,6 +18,7 @@ WORKDIR /app
 RUN groupadd -r posterpro && useradd -r -g posterpro posterpro
 COPY --from=build /build/target/*.jar app.jar
 RUN chown posterpro:posterpro app.jar
+RUN mkdir -p /app/logs && chown -R posterpro:posterpro /app
 USER posterpro
 
 # Actual port is PORT (application.yml: server.port: ${PORT:8080}) — set PORT
