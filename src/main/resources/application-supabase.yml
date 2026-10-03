@@ -1,0 +1,25 @@
+# Temporary test database on Supabase (Postgres via the SESSION pooler, port 5432).
+# Layer ON TOP of dev so it overrides dev's datasource but keeps its jwt/storage/payment
+# values:  --spring.profiles.active=dev,supabase   (order matters: last wins)
+#
+# Required env vars:
+#   SUPABASE_DB_HOST      e.g. aws-0-<region>.pooler.supabase.com
+#   SUPABASE_DB_USER      e.g. postgres.<project-ref>   (pooler user includes the project ref)
+#   SUPABASE_DB_PASSWORD  database password (never commit)
+spring:
+  datasource:
+    url: jdbc:postgresql://${SUPABASE_DB_HOST}:5432/postgres?sslmode=require
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: PosterProSupabasePool
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
