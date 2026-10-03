@@ -19,7 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -120,7 +124,8 @@ public class PosterService {
 
         BufferedImage canvas = new BufferedImage(schema.canvasWidth(), schema.canvasHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = canvas.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.drawImage(source, 0, 0, schema.canvasWidth(), schema.canvasHeight(), null);
@@ -232,6 +237,8 @@ public class PosterService {
         }
     }
 
+    private static final float JPEG_QUALITY = 0.95f;
+
     private byte[] encode(BufferedImage canvas, DownloadFormat format) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         if (format == DownloadFormat.JPG) {
@@ -241,7 +248,16 @@ public class PosterService {
             g.fillRect(0, 0, rgb.getWidth(), rgb.getHeight());
             g.drawImage(canvas, 0, 0, null);
             g.dispose();
-            ImageIO.write(rgb, "jpg", out);
+            ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+            ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(JPEG_QUALITY);
+            try (ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
+                writer.setOutput(ios);
+                writer.write(null, new IIOImage(rgb, null, null), param);
+            } finally {
+                writer.dispose();
+            }
         } else {
             ImageIO.write(canvas, "png", out);
         }
