@@ -51,6 +51,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Platform health check; the only actuator endpoint exposed (see
+                        // management.endpoints.web.exposure.include in application.yml).
+                        .requestMatchers("/actuator/health").permitAll()
                         // Razorpay calls this server-to-server with no JWT; authenticity is
                         // instead verified from the raw body + X-Razorpay-Signature header
                         // (see PaymentService#handleWebhook) — never trust this path on

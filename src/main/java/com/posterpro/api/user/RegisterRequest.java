@@ -20,4 +20,9 @@ public class RegisterRequest {
 
     @NotBlank(message = "Shop name is required")
     private String shopName;
+
+    // Trim at bind time so stray whitespace from mobile keyboards doesn't fail @Email.
+    public void setEmail(String email) {
+        this.email = email == null ? null : email.trim();
+    }
 }

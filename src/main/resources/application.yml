@@ -2,14 +2,13 @@ spring:
   application:
     name: poster-pro-backend
 
-  # No profile is "correct" to silently default to in production, so there is
-  # no ${...:dev} fallback here — omit SPRING_PROFILES_ACTIVE and the app runs
-  # with NONE of application-dev.yml/application-prod.yml's values, which will
-  # fail fast (e.g. no datasource URL) rather than accidentally behaving like
-  # dev. Local runs should pass -Dspring.profiles.active=dev (or `dev,local`)
-  # explicitly — see README/run configuration.
+  # There is deliberately NO default profile: if SPRING_PROFILES_ACTIVE (or
+  # --spring.profiles.active) is not set, the app runs with none of
+  # application-dev.yml/application-prod.yml's values and fails fast (no
+  # datasource URL) instead of silently falling back to dev/localhost.
+  # Local runs must pass the profile explicitly, e.g.
+  # SPRING_PROFILES_ACTIVE=dev (or dev,supabase) — see README/run configuration.
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
     group:
       # PosterProApplicationTests runs with @ActiveProfiles("test") — pull in
       # dev's datasource/jwt/storage/payment values (same local Postgres/MinIO)
@@ -44,6 +43,17 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+
+# Only /actuator/health is exposed (used for platform health checks). Details
+# are hidden, so the response is just {"status":"UP"}.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 # jwt.*, storage.*, payment.* have no values here — each is entirely
 # environment-specific and lives in application-{dev,prod}.yml. Nothing in

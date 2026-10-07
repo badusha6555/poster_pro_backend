@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Entity
 @Table(name = "users")
@@ -40,6 +41,11 @@ public class User {
 
     @Column(name = "business_type")
     private String businessType;
+
+    /** Canonical form for storing and looking up emails: trimmed and lower-cased. */
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

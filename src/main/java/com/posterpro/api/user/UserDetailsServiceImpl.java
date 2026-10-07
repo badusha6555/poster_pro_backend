@@ -16,7 +16,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        // JWT subjects issued before emails were normalised may be mixed-case.
+        User user = userRepository.findByEmail(User.normalizeEmail(email))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())

@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,17 +31,21 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req) {
-        if (userRepository.existsByEmail(req.getEmail())) {
-            log.warn("Registration failed for {}: email already registered", req.getEmail());
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "Email is already registered"));
+        String email = User.normalizeEmail(req.getEmail());
+        if (userRepository.existsByEmail(email)) {
+            return emailTaken(email);
         }
 
         User user = new User();
-        user.setEmail(req.getEmail());
+        user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         user.setShopName(req.getShopName());
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // Lost a race with a concurrent registration of the same email.
+            return emailTaken(email);
+        }
 
         String token = jwtService.generateToken(user.getEmail());
         log.info("User registered: {}", user.getEmail());
@@ -48,11 +53,17 @@ public class AuthController {
                 .body(new AuthResponse(token, user.getEmail(), user.getShopName()));
     }
 
+    private ResponseEntity<?> emailTaken(String email) {
+        log.warn("Registration failed for {}: email already registered", email);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", "Email is already registered"));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         try {
             Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(req.getEmail(), req.getPassword())
+                    new UsernamePasswordAuthenticationToken(User.normalizeEmail(req.getEmail()), req.getPassword())
             );
             String email = auth.getName();
             User user = userRepository.findByEmail(email)
